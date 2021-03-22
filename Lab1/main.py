@@ -14,27 +14,25 @@ def main():
     h = 1
     t = 0
     
-    f = open('test.txt', 'w')
-
+    tt = [i for i in range(tk//h)]
+    x = []
+    y = []
+    z = []
     for i in np.arange(t, tk): 
         integrator.oneStep(model, values, t, h)
-        # print('t = \t', t, end='\n')
-        # print("y(t): ", end='\n')
-        # for j in range(len(values)):
-        #     print(values[j], end='\n')
-        # print('\n')
-        #f.write(str(i) + ' ' + str(values[0]) + '\n')
+        x.append(values[0])
+        y.append(values[1])
+        z.append(values[2])
         t += h
         print(i, end='\n')
 
-    x = [i for i in range(tk/h)]
-    y = []
-    for i in range(tk/h):
-        y.append(values[i][0])
-    plt.plot(x, y)
+    plt.plot(tt, x, label='x')
+    plt.plot(tt, y, label='y')
+    plt.plot(tt, z, label='z')
+    plt.xlabel('t - axis')
+    plt.legend()
     plt.show()
-    #print('\nSteps: ', i, end='\n')
-    f.close()
+
 
 
 if __name__ == "__main__":
