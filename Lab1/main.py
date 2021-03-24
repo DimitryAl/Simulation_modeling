@@ -2,12 +2,19 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt 
 
-from integrators import TRungeKutta
+from integrators import TRungeKutta, TEuler
 from models import TSpaceCraft
 
 
 def main():
-    integrator = TRungeKutta()
+    
+    n = input('Choose method:\n1)RungeKutta method\n2)Euler method\n')
+    if n == '1':
+        integrator = TRungeKutta()
+        print('You have chosen the RunheRutta method.')
+    if n == '2':
+        integrator = TEuler()
+        print('You have chosen the Euler method.')
     model = TSpaceCraft()
 
     values = [31200000.0, 31200000.0, 0.0, -1700.0, 1200.0, -1900.0]    #x,y,z,Vx,Vy,Vz
@@ -20,7 +27,7 @@ def main():
     y = []
     z = []
     for i in np.arange(t, tk): 
-        if i % 1000 == 0:
+        if i % (tk//h//1000) == 0:
             print('\r', end='')
             print('Progress: %.1f' % (i/tk*100), '%', end='')
         integrator.oneStep(model, values, t, h)
@@ -51,7 +58,7 @@ def main():
     plt.savefig('result.png')
     plt.show()
 
-    print('Done')
+    print('\nDone')
 
 if __name__ == "__main__":
     print('Program start')
