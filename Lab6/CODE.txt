@@ -1,4 +1,4 @@
-	SIMULATE
+﻿	SIMULATE
 		
 	INITIAL X$TM_,1000	;ВРЕМЯ МОДЕЛИРОВАНИЯ
 	INITIAL X$N1_,5		;КОЛ-ВО ЗАЯВОК НА ЦП1
@@ -36,8 +36,8 @@ GETOP2 FUNCTION RN1,D2 		;ВРЕМЯ ВЫБОРКИ ДЛЯ ЦП2
 .2,2/1,4
 
 		GENERATE ,,,X$N1_,X$PR1_	;ГЕНЕРАЦИЯ ЗАЯВОК ЦП1
-		ASSIGN 2,1					;ВТОРОЙ ПАРАМЕТР - ИСТОЧНИК ЗАЯВКИ
-		ASSIGN 3,FN$GETOP1			;ТРЕТИЙ ПАРАМЕТР - ВРЕМЯ ВЫБОРКИ ИЗ ОП
+		ASSIGN 2,1			;ВТОРОЙ ПАРАМЕТР - ИСТОЧНИК ЗАЯВКИ
+		ASSIGN 3,FN$GETOP1		;ТРЕТИЙ ПАРАМЕТР - ВРЕМЯ ВЫБОРКИ ИЗ ОП
 
 PROC1	QUEUE QPU1_					
 		SEIZE PU1_
@@ -48,9 +48,9 @@ PROC1	QUEUE QPU1_
 OP		QUEUE QOP_
 		SEIZE OP_
 		DEPART QOP_
-		ADVANCE P3					;ВЫБИРАЕМ ИЗ ОП
+		ADVANCE P3			;ВЫБИРАЕМ ИЗ ОП
 		RELEASE OP_
-		TEST E P2,1,FROM2			;ОПРЕДЕЛЕНИЕ ИСТОЧНИКА ЗАЯВКИ
+		TEST E P2,1,FROM2		;ОПРЕДЕЛЕНИЕ ИСТОЧНИКА ЗАЯВКИ
 		TRANSFER ,PROC1				 
 FROM2	TEST E P2,2,FROM3
 		TRANSFER ,PROC2
@@ -68,10 +68,10 @@ PROC2	QUEUE QPU2_
 		TRANSFER ,OP
 	
 		GENERATE ,,,X$N3_,X$PR3_	;ГЕНЕРАЦИЯ ЗАЯВОК ЦП3
-		SAVEVALUE NUM+,1			;НОМЕР ЗАЯВКИ НА ЦП3
-		ASSIGN 2,3					;ВТОРОЙ ПАРАМЕТР - ИСТОЧНИК ЗАЯВКИ
-		ASSIGN 3,X$T3_				;ТРЕТИЙ ПАРАМЕТР - ВРЕМЯ ВЫБОРКИ ИЗ ОП
-		ASSIGN 4,NUM				;ЧЕТВЕРТЫЙ ПАРАМЕТР - НОМЕР ЗАЯВКИ 
+		SAVEVALUE NUM+,1		;НОМЕР ЗАЯВКИ НА ЦП3
+		ASSIGN 2,3			;ВТОРОЙ ПАРАМЕТР - ИСТОЧНИК ЗАЯВКИ
+		ASSIGN 3,X$T3_			;ТРЕТИЙ ПАРАМЕТР - ВРЕМЯ ВЫБОРКИ ИЗ ОП
+		ASSIGN 4,NUM			;ЧЕТВЕРТЫЙ ПАРАМЕТР - НОМЕР ЗАЯВКИ 
 
 PROC3	QUEUE QPU3_
 		SEIZE PU3_
