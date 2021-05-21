@@ -1,86 +1,45 @@
-﻿	SIMULATE
+﻿		SIMULATE
 		
-	INITIAL X$TM_,1000	;ВРЕМЯ МОДЕЛИРОВАНИЯ
-	INITIAL X$N1_,5		;КОЛ-ВО ЗАЯВОК НА ЦП1
-	INITIAL X$PR1_,10	;ПРИОРИТЕТ ЗАЯВОК НА ЦП1
-	INITIAL X$P1_,0.3	
-	INITIAL X$P2_,0.2
-	INITIAL X$P3_,0.5
-	INITIAL X$T1_1,5
-	INITIAL X$T1_2,2
-	INITIAL X$T1_3,7
+		INITIAL X$TM_,300	;ВРЕМЯ МОДЕЛИРОВАНИЯ
+		
+SETPRIOR	FUNCTION P1,E4		;ПРИСВАИВАЕМ ЗАЯВКЕ ПРИОРИТЕТ
+1,2/2,1/3,1/4,1
+		
+SEVMTIME FUNCTION P1,E4		;ВРЕМЯ ОБРАБОТКИ НА СЭВМ
+1,4/2,6/3,5/4,4
 
-	INITIAL X$N2_,6		;КОЛ-ВО ЗАЯВОК НА ЦП2
-	INITIAL X$PR2_,20	;ПРИОРИТЕТ ЗАЯВОК НА ЦП2
-	INITIAL X$T2_,8		;ВРЕМЯ ОБРАБОТКИ
-	INITIAL X$T2DISP_,3	;ЗАЯВКИ НА ЦП2
+QQ FUNCTION P1,E4
+1,FN$CEVM1TIME/2,FN$CEVM2TIME/3,FN$CEVM3TIME/4,FN$CEVM4TIME
 
-	INITIAL X$N3_,3		;КОЛ-ВО ЗАЯВОК НА ЦП3
-	INITIAL X$PR3_,30	;ПРИОРИТЕТ ЗАЯВОК НА ЦП3
-	INITIAL X$T3_1,5	;ВРЕМЯ ОБРАБОТКИ 1-Й ЗАЯВКИ НА ЦП3
-	INITIAL X$T3_2,10	;ВРЕМЯ ОБРАБОТКИ 2-Й ЗАЯВКИ НА ЦП3
-	INITIAL X$T3_3,15	;ВРЕМЯ ОБРАБОТКИ 3-Й ЗАЯВКИ НА ЦП3
-	INITIAL X$T3_		;ВРЕМЯ ВЫБОРКИ ЦП3
-	INITIAL X$NUM,0		;НОМЕР ЗАЯВКИ НА ЦП3
+CEVM1TIME	FUNCTION RN1,D3 		;ВРЕМЯ ОБРАБОТКИ НА ЦЭВМ1 
+.3,5/.8,2/1,7	
 
-PROCTIME1	FUNCTION RN1,D3 ;ВРЕМЯ ОБРАБОТКИ ЗАЯВКИ НА ЦП1
-.2,2/.5,5/1,7
+CEVM2TIME	FUNCTION RN1,D2 		;ВРЕМЯ ОБРАБОТКИ НА ЦЭВМ2 
+.2,3/1,4	
 
-PROCTIME3	FUNCTION P4,E3 	;ВРЕМЯ ОБРАБОТКИ НА ЦП3 
-1,5/2,10/3,15
+CEVM3TIME	FUNCTION RN1,D2 		;ВРЕМЯ ОБРАБОТКИ НА ЦЭВМ3 
+.3,5/1,6	
 
-GETOP1 FUNCTION RN1,D2 		;ВРЕМЯ ВЫБОРКИ ДЛЯ ЦП1
-.3,3/1,6
+CEVM4TIME	FUNCTION RN1,D3 		;ВРЕМЯ ОБРАБОТКИ НА ЦЭВМ4 
+.2,5/.6,4/1,3
 
-GETOP2 FUNCTION RN1,D2 		;ВРЕМЯ ВЫБОРКИ ДЛЯ ЦП2
-.2,2/1,4
-
-		GENERATE ,,,X$N1_,X$PR1_	;ГЕНЕРАЦИЯ ЗАЯВОК ЦП1
-		ASSIGN 2,1			;ВТОРОЙ ПАРАМЕТР - ИСТОЧНИК ЗАЯВКИ
-		ASSIGN 3,FN$GETOP1		;ТРЕТИЙ ПАРАМЕТР - ВРЕМЯ ВЫБОРКИ ИЗ ОП
-
-PROC1	QUEUE QPU1_					
-		SEIZE PU1_
-		DEPART QPU1_
-		ADVANCE FN$PROCTIME1		;ОБРАБАТЫВАЕМ ЗАЯВКУ НА ЦП1
-		RELEASE PU1_
+		
+	GENERATE ,,,1	;ГЕНЕРИРУЕМ ОДИН ТРАНКЗАКТ
+		
+	SPLIT 3,MET1,1
+MET1	PRIORITY FN$SETPRIOR
 	
-OP		QUEUE QOP_
-		SEIZE OP_
-		DEPART QOP_
-		ADVANCE P3			;ВЫБИРАЕМ ИЗ ОП
-		RELEASE OP_
-		TEST E P2,1,FROM2		;ОПРЕДЕЛЕНИЕ ИСТОЧНИКА ЗАЯВКИ
-		TRANSFER ,PROC1				 
-FROM2	TEST E P2,2,FROM3
-		TRANSFER ,PROC2
-FROM3	TRANSFER ,PROC3
+MET2	SEIZE SEVM_
+	ADVANCE FN$SEVMTIME
+	RELEASE SEVM_
 
-		GENERATE ,,,X$N2_,X$PR2_	;ГЕНЕРАЦИЯ ЗАЯВОК ЦП2
-		ASSIGN 2,2					;ВТОРОЙ ПАРАМЕТР - ИСТОЧНИК ЗАЯВКИ
-		ASSIGN 3,FN$GETOP2 			;ТРЕТИЙ ПАРАМЕТР - ВРЕМЯ ВЫБОРКИ ИЗ ОП
+	QUEUE QCEVM_
+	PREEMPT CEVM_
+	DEPART QCEVM_
+	ADVANCE FN$QQ
+	RETURN CEVM_
+	TRANSFER ,MET2
 
-PROC2	QUEUE QPU2_
-		SEIZE PU2_
-		DEPART QPU2_
-		ADVANCE X$T2_,X$T2DISP_
-		RELEASE PU2_
-		TRANSFER ,OP
-	
-		GENERATE ,,,X$N3_,X$PR3_	;ГЕНЕРАЦИЯ ЗАЯВОК ЦП3
-		SAVEVALUE NUM+,1		;НОМЕР ЗАЯВКИ НА ЦП3
-		ASSIGN 2,3			;ВТОРОЙ ПАРАМЕТР - ИСТОЧНИК ЗАЯВКИ
-		ASSIGN 3,X$T3_			;ТРЕТИЙ ПАРАМЕТР - ВРЕМЯ ВЫБОРКИ ИЗ ОП
-		ASSIGN 4,NUM			;ЧЕТВЕРТЫЙ ПАРАМЕТР - НОМЕР ЗАЯВКИ 
-
-PROC3	QUEUE QPU3_
-		SEIZE PU3_
-		DEPART QPU3_
-		ADVANCE FN$PROCTIME3		;ОБРАБАТЫВАЕМ ЗАЯВКУ НА ЦП3
-		RELEASE PU3_
-		TRANSFER ,OP
-	
-	
 	GENERATE X$TM_
 	TERMINATE 1
 	START 1
