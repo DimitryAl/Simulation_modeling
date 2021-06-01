@@ -1,0 +1,101 @@
+    INITIAL X$TM,15000
+    
+    INITIAL X$t1_,90
+    INITIAL X$t1disp_,10
+    INITIAL X$n1_,30
+    INITIAL X$t2_,250
+    INITIAL X$t3_,120
+    INITIAL x$t3disp_,35
+    INITIAL X$n3_,45
+
+    INITIAL X$T1_,30
+    INITIAL X$T1disp_,10
+    INITIAL X$T2_,40
+    INITIAL X$T2disp_,15
+    INITIAL X$T3_,35
+    INITIAL X$T3disp_,12
+
+    INITIAL X$P1_,.7
+    INITIAL X$P2_,.3
+
+
+
+ARMPRIOR FUNC P1,E3         ;Определяем приоритет заявки
+1,3/2,2/3,2
+
+ARMTIME FUNC RN1,D3         ;Время обработки на АРМ
+.5,18/.8,25/1,30
+
+KMMTIME FUNC P1,E3          ;Время обработки на КММ
+1,2/FN$KMM2TIME/3,1
+
+KMM2TIME FUNC RN1,D2        ;Время обработки заявки с АРМ2 на КММ
+.2,3/1,1
+
+
+
+MTERM1  GENERATE t1_,t1disp_,,n1_    ;Генерация транзактов АРМ1
+        ASSIGN 1,1                  ;Первый параметр - номер терминала
+        QUEUE TERM1                 ;Обработка на первом терминале
+        SEIZE TERM1
+        DEPART TERM1
+        ADVANCE T1_,T1disp_
+        RELEASE TERM1
+        TRANSFER ,MARM1
+
+MARM1   QUEUE ARM1              ;Обработка на АРМ1
+        SEIZE ARM1
+        DEPART ARM1
+        PRIORITY FN$ARMPRIOR    ;Задаём заявке приоритет
+        ADVANCE FN$ARMTIME
+        RELEASE ARM1
+        ;ASSIGN 2,1
+        TRANSFER P1_,MKMM,MTERM1
+
+MTERM2  GENERATE t2_
+        ASSIGN 1,2
+        QUEUE TERM2
+        SEIZE TERM2
+        DEPART TERM2
+        ADVANCE T2_,T2disp_
+        RELEASE TERM2
+        TRANSFER ,MARM2
+
+MARM2   QUEUE ARM2
+        SEIZE ARM2
+        DEPART ARM2
+        PRIORITY FN$ARMPRIOR
+        RELEASE ARM2
+        ;ASSIGN 2,1
+        TRANSFER P1_,MKMM,MTERM2
+
+MTERM3  GENERATE t3_,T3disp_,,n3_
+        ASSIGN 1,3
+        QUEUE TERM3
+        SEIZE TERM3
+        DEPART TERM3
+        ADVANCE T3_,T3disp_
+        RELEASE TERM3
+        TRANSFER MARM3
+
+MARM3   QUEUE ARM3
+        SEIZE ARM3
+        DEPART ARM3
+        PRIORITY FN$ARMPRIOR
+        RELEASE ARM3
+        ;ASSIGN 2,1
+        TRANSFER P1_,MKMM,MTERM3
+
+
+
+MKMM    TEST NE X$QISOC_,1,KMMPROC
+        LINK QKMM,
+
+
+
+
+
+
+GENERATE TM
+TERMINATE 1
+START 1
