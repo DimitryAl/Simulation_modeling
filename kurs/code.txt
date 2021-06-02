@@ -1,5 +1,6 @@
     INITIAL X$TM,15000
     
+    ;Интервалы времени поступления заявок в систему
     INITIAL X$t1_,90
     INITIAL X$t1disp_,10
     INITIAL X$n1_,30
@@ -8,6 +9,7 @@
     INITIAL x$t3disp_,35
     INITIAL X$n3_,45
 
+    ;Время обработок заявок на терминале
     INITIAL X$T1_,30
     INITIAL X$T1disp_,10
     INITIAL X$T2_,40
@@ -15,41 +17,54 @@
     INITIAL X$T3_,35
     INITIAL X$T3disp_,12
 
-    INITIAL X$P1_,.7
-    INITIAL X$P2_,.3
+    ;Время обработки на ЦВК
+    INITIAL X$T_,50
+    INITIAL X$Tdisp_,5
 
+    INITIAL X$P1_,.7    ;Вероятность перехода на терминал
+    INITIAL X$P2_,.3    ;Вероятность перехода на КММ
 
+    INITIAL X$QISOC_,0  ;
+    INITIAL X$TERM1NUM,0;Номер заявки поступившей с ЦВК на терминал1
+    INITIAL X$TERM1MAX,5;
+    INITIAL X$TERM2NUM,0;
+    INITIAL X$TERM2MAX,4;
+    INITIAL X$TERM3NUM,0;
+    INITIAL X$TERM3MAX,3;
 
-ARMPRIOR FUNC P1,E3         ;Определяем приоритет заявки
+    INITIAL X$PROC,0;
+    INITIAL X$FLAG,0;
+
+ARMPRIOR FUNCTION P1,E3         ;Определяем приоритет заявки
 1,3/2,2/3,2
 
-ARMTIME FUNC RN1,D3         ;Время обработки на АРМ
+ARMTIME FUNCTION RN1,D3         ;Время обработки на АРМ
 .5,18/.8,25/1,30
 
-KMMTIME FUNC P1,E3          ;Время обработки на КММ
-1,2/FN$KMM2TIME/3,1
+KMMTIME FUNCTION P1,E3          ;Время обработки на КММ
+1,2/2,FN$KMM2TIME/3,1
 
-KMM2TIME FUNC RN1,D2        ;Время обработки заявки с АРМ2 на КММ
+KMM2TIME FUNCTION RN1,D2        ;Время обработки заявки с АРМ2 на КММ
 .2,3/1,1
 
 
-
-MTERM1  GENERATE t1_,t1disp_,,n1_    ;Генерация транзактов АРМ1
-        ASSIGN 1,1                  ;Первый параметр - номер терминала
-        QUEUE TERM1                 ;Обработка на первом терминале
+ 
+MTERM1  GENERATE t1_,t1disp_,,n1_       ;Генерация транзактов для АРМ1
+        ASSIGN 1,1                      ;Первый параметр - номер терминала
+        QUEUE TERM1                     ;Обработка на первом терминале
         SEIZE TERM1
         DEPART TERM1
         ADVANCE T1_,T1disp_
         RELEASE TERM1
         TRANSFER ,MARM1
 
-MARM1   QUEUE ARM1              ;Обработка на АРМ1
+MARM1   QUEUE ARM1                      ;Обработка на АРМ1
         SEIZE ARM1
         DEPART ARM1
-        PRIORITY FN$ARMPRIOR    ;Задаём заявке приоритет
+        PRIORITY FN$ARMPRIOR            ;Задаём заявке приоритет
         ADVANCE FN$ARMTIME
         RELEASE ARM1
-        ;ASSIGN 2,1
+        ASSIGN 2,0                      ;Второй параметр - была ли заявка на ЦВК
         TRANSFER P1_,MKMM,MTERM1
 
 MTERM2  GENERATE t2_
@@ -66,7 +81,7 @@ MARM2   QUEUE ARM2
         DEPART ARM2
         PRIORITY FN$ARMPRIOR
         RELEASE ARM2
-        ;ASSIGN 2,1
+        ASSIGN 2,0
         TRANSFER P1_,MKMM,MTERM2
 
 MTERM3  GENERATE t3_,T3disp_,,n3_
@@ -83,19 +98,55 @@ MARM3   QUEUE ARM3
         DEPART ARM3
         PRIORITY FN$ARMPRIOR
         RELEASE ARM3
-        ;ASSIGN 2,1
+        ASSIGN 2,0
         TRANSFER P1_,MKMM,MTERM3
 
 
 
-MKMM    TEST NE X$QISOC_,1,KMMPROC
-        LINK QKMM,
+MKMM    TEST E X$QISOC_,1,M2KMM      ;Если КММ занят, то добавляем в очередь
+        LINK QKMM,PR
 
+M2KMM   SAVEVALUE QISOC_,1
+        QUEUE KMM
+        SEIZE KMM
+        DEPART KMM
+        ADVANCE FN$KMMTIME
+        RELEASE KMM
 
+        TEST NE CH$QKMM,0,MZERO         ;Если в очереди есть транзакт, извлекаем его
+        UNLINK QKMM,M2KMM,1
+        TRANSFER ,DISTR
 
+MZERO   SAVEVALUE QISOC_,0               ;Если КММ не занята, то QISOC_ = 0
 
+MDISTR  TEST E P2,1,MCVK                 ;Если транзакт не был на ЦВК, отправляем его туда
+        TEST E P1,1,TOTERM2              ;Если транзакт с первого терминала, то отправляем его обратно
+TOTERM1 SAVEVALUE TERM1NUM+,1            
+        TEST E TERM1NUM,TERM1MAX,MTERM1 ;Если это 5-я заявка с ЦВК, то уничтожаем её
+        SAVEVALUE TERM1NUM,0            ;Обнуляем счётчик заявок
+        TRANSFER MKILL 
+TOTERM2 TEST E P1,2,TOTERM3
+        TEST E TERM2NUM,TERM2MAX,MTERM2 ;Если это 4-я заявка с ЦВК, то уничтожаем её
+        SAVEVALUE TERM2NUM,0            ;Обнуляем счётчик заявок
+        TRANSFER MKILL 
+TOTERM3 TEST E TERM3NUM,TERM3MAX,MTERM3 ;Если это 3-я заявка с ЦВК, то уничтожаем её
+        SAVEVALUE TERM3NUM,0            ;Обнуляем счётчик заявок
+        TRANSFER MKILL 
 
+MCVK    PRIORITY 1
+        QUEUE CVK
+        SEIZE CVK
+        DEPART CVK
+        ADVANCE T_,Tdisp_
+        RELEASE CVK
+        TEST E FLAG,0,FLAGUP
+        SAVEVALUE PROC+,1;
+FLAGUP  ASSIGN 2,1                      ;Транзакт прошел ЦВК
+        TRANSFER ,MKMM
 
-GENERATE TM
-TERMINATE 1
-START 1
+MKILL   SAVEVALUE FLAG,1
+        TERMINATE
+
+        GENERATE TM
+        TERMINATE 1
+        START 1
